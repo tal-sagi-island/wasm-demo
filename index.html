@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>SharedWorker WASM Trigger</h1>
+  <div id="status">Waiting...</div>
+
+  <script>
+    // 1. TRICK THE DETECTOR: Run a tiny WASM instance on the Main Thread
+    // This forces the "webAssemblyDetected" event to fire.
+    (async () => {
+      try {
+        await WebAssembly.instantiate(new Uint8Array([
+          0,97,115,109,1,0,0,0,1,4,1,96,0,0,3,2,1,0,7,8,1,4,116,101,115,116,0,0,10,4,1,2,0,11
+        ])); 
+        console.log("Main Thread: TRAP SET. Detector should fire now.");
+      } catch(e) { console.error(e); }
+    })();
+
+    // 2. The Real Business: Start the SharedWorker
+    const worker = new SharedWorker('worker.js');
+    
+    worker.port.onmessage = (e) => {
+      document.getElementById('status').innerText = e.data;
+      console.log("Received from SharedWorker:", e.data);
+    };
+    
+    worker.port.start();
+    worker.port.postMessage("START_WASM");
+  </script>
+</body>
+</html>
