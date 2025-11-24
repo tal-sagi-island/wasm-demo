@@ -1,31 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shared WASM Counter</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        #count { font-size: 4em; font-weight: bold; color: #333; }
+        button { padding: 10px 20px; font-size: 1.2em; cursor: pointer; }
+        .status { color: #666; margin-top: 20px; }
+    </style>
+</head>
 <body>
-  <h1>SharedWorker WASM Trigger</h1>
-  <div id="status">Waiting...</div>
 
-  <script>
-    // 1. TRICK THE DETECTOR: Run a tiny WASM instance on the Main Thread
-    // This forces the "webAssemblyDetected" event to fire.
-    (async () => {
-      try {
-        await WebAssembly.instantiate(new Uint8Array([
-          0,97,115,109,1,0,0,0,1,4,1,96,0,0,3,2,1,0,7,8,1,4,116,101,115,116,0,0,10,4,1,2,0,11
-        ])); 
-        console.log("Main Thread: TRAP SET. Detector should fire now.");
-      } catch(e) { console.error(e); }
-    })();
+    <h1>SharedWorker WASM State</h1>
+    <div id="count">...</div>
+    <br>
+    <button id="btn">Increment via WASM</button>
+    <div class="status">Open this page in a second tab to see the magic.</div>
 
-    // 2. The Real Business: Start the SharedWorker
-    const worker = new SharedWorker('worker.js');
-    
-    worker.port.onmessage = (e) => {
-      document.getElementById('status').innerText = e.data;
-      console.log("Received from SharedWorker:", e.data);
-    };
-    
-    worker.port.start();
-    worker.port.postMessage("START_WASM");
-  </script>
+    <script>
+        const display = document.getElementById('count');
+        const btn = document.getElementById('btn');
+        
+        // Connect to the specific worker file
+        const worker = new SharedWorker('worker.js');
+
+        // Listen for broadcasts from the worker
+        worker.port.onmessage = (e) => {
+            if (e.data.type === 'UPDATE') {
+                display.innerText = e.data.value;
+                console.log("Updated by SharedWorker");
+            }
+        };
+
+        worker.port.start();
+
+        // Send command to worker
+        btn.onclick = () => {
+            worker.port.postMessage("INCREMENT");
+        };
+    </script>
 </body>
 </html>
